@@ -124,18 +124,24 @@ export function useClientDashboardData(companyId: string | null) {
         .in('branch_id', branchIds)
         .in('status', ['scheduled', 'in_progress']);
 
-      // Get certificate count
-      const { count: totalCertificates } = await supabase
-        .from('certificates')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'approved');
+      // Get certificate count (may fail due to RLS, handle gracefully)
+      let totalCertificates = 0;
+      try {
+        const { count } = await supabase
+          .from('certificates')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'approved');
+        totalCertificates = count || 0;
+      } catch (err) {
+        console.warn('Could not fetch certificate count:', err);
+      }
 
       return {
         branchCount: branchCount || 0,
         totalEquipment: totalEquipment || 0,
         equipmentDue30Days: equipmentDue30Days || 0,
         scheduledJobs: scheduledJobs || 0,
-        totalCertificates: totalCertificates || 0,
+        totalCertificates,
       };
     },
     enabled: !!companyId,
@@ -178,25 +184,44 @@ export function useClientDashboardData(companyId: string | null) {
     queryFn: async (): Promise<RecentCertificate[]> => {
       if (!supabase || !companyId) return [];
 
-      const { data, error } = await supabase
-        .from('certificates')
-        .select(`
-          id,
-          certificate_number,
-          calibration_date,
-          result,
-          pdf_url,
-          equipment:equipment (
-            equipment_code,
-            description
-          )
-        `)
-        .eq('status', 'approved')
-        .order('calibration_date', { ascending: false })
-        .limit(10);
+      try {
+        // First get certificates
+        const { data: certs, error: certError } = await supabase
+          .from('certificates')
+          .select('id, certificate_number, calibration_date, result, pdf_url, equipment_id')
+          .eq('status', 'approved')
+          .order('calibration_date', { ascending: false })
+          .limit(10);
 
-      if (error) throw error;
-      return (data || []) as unknown as RecentCertificate[];
+        if (certError) {
+          console.warn('Error fetching certificates:', certError);
+          return [];
+        }
+
+        if (!certs || certs.length === 0) return [];
+
+        // Get equipment details for these certificates
+        const equipmentIds = [...new Set(certs.map(c => c.equipment_id).filter(Boolean))];
+        
+        if (equipmentIds.length === 0) {
+          return certs.map(c => ({ ...c, equipment: null })) as unknown as RecentCertificate[];
+        }
+
+        const { data: equipment } = await supabase
+          .from('equipment')
+          .select('id, equipment_code, description')
+          .in('id', equipmentIds);
+
+        const equipmentMap = new Map(equipment?.map(e => [e.id, e]) || []);
+
+        return certs.map(c => ({
+          ...c,
+          equipment: c.equipment_id ? equipmentMap.get(c.equipment_id) || null : null,
+        })) as unknown as RecentCertificate[];
+      } catch (err) {
+        console.warn('Error in certificates query:', err);
+        return [];
+      }
     },
     enabled: !!companyId,
     staleTime: 60 * 1000,
