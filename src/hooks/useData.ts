@@ -397,7 +397,13 @@ export function useDashboardStats() {
           .single();
 
         if (!error && data) {
-          return data;
+          // Map view column names to what UI expects
+          return {
+            total_companies: data.active_companies || 0,
+            total_equipment: data.active_equipment || 0,
+            open_jobs: data.open_jobs || 0,
+            equipment_due_30_days: 0, // Not in view, will calculate below if needed
+          };
         }
       } catch (err) {
         console.warn('Materialized view not available');
