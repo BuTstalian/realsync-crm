@@ -390,26 +390,26 @@ export function useDashboardStats() {
       if (!supabase) throw new Error('Supabase not configured');
 
       try {
-        // Try materialized view first
-        const { data, error } = await supabase
-          .from('mv_system_stats')
-          .select('*')
-          .single();
+        // Use fast RPC function
+        const { data, error } = await supabase.rpc('get_dashboard_stats_fast');
 
-        if (!error && data) {
-          // Map view column names to what UI expects
+        if (!error && data && data.length > 0) {
           return {
-            total_companies: data.active_companies || 0,
-            total_equipment: data.active_equipment || 0,
-            open_jobs: data.open_jobs || 0,
-            equipment_due_30_days: 0, // Not in view, will calculate below if needed
+            total_companies: data[0].total_companies || 0,
+            total_equipment: data[0].total_equipment || 0,
+            open_jobs: data[0].open_jobs || 0,
+            equipment_due_30_days: data[0].equipment_due_30_days || 0,
           };
         }
+        
+        if (error) {
+          console.warn('Dashboard stats RPC error:', error);
+        }
       } catch (err) {
-        console.warn('Materialized view not available');
+        console.warn('Dashboard stats error:', err);
       }
 
-      // Fallback to direct queries
+      // Fallback to direct queries if RPC fails
       try {
         const [companies, equipment, jobs, equipmentDue] = await Promise.all([
           supabase.from('companies').select('id', { count: 'exact', head: true }).eq('is_active', true),
