@@ -99,6 +99,7 @@ export interface Database {
           notes: string | null;
           tags: string[];
           is_active: boolean;
+          version: number;
           created_by: string | null;
           created_at: string;
           updated_at: string;
@@ -123,6 +124,7 @@ export interface Database {
           notes?: string | null;
           tags?: string[];
           is_active?: boolean;
+          version?: number;
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -145,8 +147,10 @@ export interface Database {
           notes?: string | null;
           tags?: string[];
           is_active?: boolean;
+          version?: number;
           updated_at?: string;
         };
+        Relationships: [];
       };
       branches: {
         Row: {
@@ -687,11 +691,66 @@ export interface Database {
           updated_at?: string;
         };
       };
+      record_locks: {
+        Row: {
+          id: string;
+          entity_type: string;
+          entity_id: string;
+          locked_by: string;
+          locked_at: string;
+          expires_at: string;
+          lock_reason: string | null;
+        };
+        Insert: {
+          id?: string;
+          entity_type: string;
+          entity_id: string;
+          locked_by: string;
+          locked_at?: string;
+          expires_at: string;
+          lock_reason?: string | null;
+        };
+        Update: {
+          expires_at?: string;
+          lock_reason?: string | null;
+        };
+      };
+      user_presence: {
+        Row: {
+          id: string;
+          user_id: string;
+          current_page: string;
+          entity_type: string | null;
+          entity_id: string | null;
+          status: string;
+          last_seen: string;
+          metadata: Json | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          current_page: string;
+          entity_type?: string | null;
+          entity_id?: string | null;
+          status?: string;
+          last_seen?: string;
+          metadata?: Json | null;
+        };
+        Update: {
+          current_page?: string;
+          entity_type?: string | null;
+          entity_id?: string | null;
+          status?: string;
+          last_seen?: string;
+          metadata?: Json | null;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
+      // Number generators
       generate_job_number: {
         Args: Record<string, never>;
         Returns: string;
@@ -708,6 +767,7 @@ export interface Database {
         Args: { quote_uuid: string };
         Returns: void;
       };
+      // Auth helpers
       is_staff: {
         Args: Record<string, never>;
         Returns: boolean;
@@ -722,15 +782,171 @@ export interface Database {
       };
       get_staff_role: {
         Args: Record<string, never>;
-        Returns: StaffRole;
+        Returns: string;
+      };
+      get_user_company_id: {
+        Args: Record<string, never>;
+        Returns: string;
+      };
+      get_user_branch_id: {
+        Args: Record<string, never>;
+        Returns: string;
       };
       belongs_to_company: {
-        Args: { company_uuid: string };
+        Args: { p_company_id: string };
         Returns: boolean;
       };
       belongs_to_branch: {
-        Args: { branch_uuid: string };
+        Args: { p_branch_id: string };
         Returns: boolean;
+      };
+      // Performance functions
+      get_approximate_count: {
+        Args: { p_table_name: string };
+        Returns: number;
+      };
+      get_companies_cursor: {
+        Args: {
+          p_limit?: number;
+          p_cursor?: string | null;
+          p_search?: string | null;
+          p_active_only?: boolean;
+        };
+        Returns: {
+          id: string;
+          company_code: string;
+          name: string;
+          billing_city: string | null;
+          billing_state: string | null;
+          is_active: boolean;
+          branch_count: number;
+        }[];
+      };
+      get_equipment_cursor: {
+        Args: {
+          p_limit?: number;
+          p_cursor?: string | null;
+          p_company_id?: string | null;
+          p_branch_id?: string | null;
+          p_category?: string | null;
+          p_due_within_days?: number | null;
+          p_search?: string | null;
+        };
+        Returns: {
+          id: string;
+          equipment_code: string;
+          description: string | null;
+          manufacturer: string | null;
+          model: string | null;
+          category: string;
+          next_calibration_due: string | null;
+          is_active: boolean;
+          branch_name: string;
+          company_name: string;
+          company_id: string;
+        }[];
+      };
+      get_jobs_cursor: {
+        Args: {
+          p_limit?: number;
+          p_cursor?: string | null;
+          p_status?: string | null;
+          p_assigned_to?: string | null;
+          p_from_date?: string | null;
+          p_to_date?: string | null;
+        };
+        Returns: {
+          id: string;
+          job_number: string;
+          status: string;
+          scheduled_date: string | null;
+          branch_name: string;
+          company_name: string;
+          assigned_to_name: string | null;
+          equipment_count: number;
+        }[];
+      };
+      search_companies_fast: {
+        Args: {
+          p_search: string;
+          p_limit?: number;
+        };
+        Returns: {
+          id: string;
+          company_code: string;
+          name: string;
+          billing_city: string | null;
+          billing_state: string | null;
+        }[];
+      };
+      get_dashboard_stats: {
+        Args: Record<string, never>;
+        Returns: {
+          total_companies: number;
+          total_equipment: number;
+          equipment_due_30_days: number;
+          open_jobs: number;
+          pending_tasks: number;
+        };
+      };
+      get_data_summary: {
+        Args: Record<string, never>;
+        Returns: {
+          table_name: string;
+          row_count: number;
+          last_updated: string | null;
+        }[];
+      };
+      // Lock functions
+      acquire_record_lock: {
+        Args: {
+          p_entity_type: string;
+          p_entity_id: string;
+          p_lock_duration_minutes?: number;
+        };
+        Returns: boolean;
+      };
+      release_record_lock: {
+        Args: {
+          p_entity_type: string;
+          p_entity_id: string;
+        };
+        Returns: boolean;
+      };
+      check_record_lock: {
+        Args: {
+          p_entity_type: string;
+          p_entity_id: string;
+        };
+        Returns: {
+          is_locked: boolean;
+          locked_by: string | null;
+          locked_by_name: string | null;
+          expires_at: string | null;
+        };
+      };
+      // Presence functions
+      update_presence: {
+        Args: {
+          p_current_page: string;
+          p_entity_type?: string | null;
+          p_entity_id?: string | null;
+          p_status?: string;
+        };
+        Returns: void;
+      };
+      get_active_users: {
+        Args: {
+          p_entity_type?: string | null;
+          p_entity_id?: string | null;
+        };
+        Returns: {
+          user_id: string;
+          user_name: string;
+          current_page: string;
+          status: string;
+          last_seen: string;
+        }[];
       };
     };
     Enums: {
@@ -773,6 +989,8 @@ export type Task = Tables<'tasks'>;
 export type ActivityLog = Tables<'activity_log'>;
 export type Document = Tables<'documents'>;
 export type Setting = Tables<'settings'>;
+export type RecordLock = Tables<'record_locks'>;
+export type UserPresence = Tables<'user_presence'>;
 
 // ============================================
 // EXTENDED TYPES (with relations)
