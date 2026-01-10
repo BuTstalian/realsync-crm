@@ -1,0 +1,140 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: theme('colors.primary.800');
+}
+
+::-webkit-scrollbar-thumb {
+  background: theme('colors.primary.600');
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: theme('colors.primary.500');
+}
+
+/* Focus styles */
+*:focus-visible {
+  outline: 2px solid theme('colors.accent.gold');
+  outline-offset: 2px;
+}
+
+/* Custom utility classes */
+@layer components {
+  .btn-primary {
+    @apply bg-accent-gold text-primary-900 font-semibold px-4 py-2 rounded-lg 
+           hover:bg-accent-amber transition-colors duration-200
+           focus:outline-none focus:ring-2 focus:ring-accent-gold focus:ring-offset-2 focus:ring-offset-primary-900;
+  }
+
+  .btn-secondary {
+    @apply bg-primary-700 text-primary-100 font-medium px-4 py-2 rounded-lg 
+           border border-primary-600 hover:bg-primary-600 transition-colors duration-200
+           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-primary-900;
+  }
+
+  .btn-danger {
+    @apply bg-status-error/20 text-status-error font-medium px-4 py-2 rounded-lg 
+           border border-status-error/30 hover:bg-status-error/30 transition-colors duration-200
+           focus:outline-none focus:ring-2 focus:ring-status-error focus:ring-offset-2 focus:ring-offset-primary-900;
+  }
+
+  .input {
+    @apply bg-primary-800 border border-primary-600 rounded-lg px-4 py-2 
+           text-primary-100 placeholder-primary-500
+           focus:border-accent-gold focus:ring-1 focus:ring-accent-gold focus:outline-none
+           transition-colors duration-200;
+  }
+
+  .card {
+    @apply bg-primary-800 border border-primary-700 rounded-lg;
+  }
+
+  .card-header {
+    @apply flex items-center justify-between p-4 border-b border-primary-700;
+  }
+
+  .card-body {
+    @apply p-4;
+  }
+
+  /* Status badges */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-new {
+    @apply bg-job-new/20 text-job-new;
+  }
+
+  .badge-quoted {
+    @apply bg-job-quoted/20 text-job-quoted;
+  }
+
+  .badge-accepted {
+    @apply bg-job-accepted/20 text-job-accepted;
+  }
+
+  .badge-scheduled {
+    @apply bg-job-scheduled/20 text-job-scheduled;
+  }
+
+  .badge-in-progress {
+    @apply bg-job-in-progress/20 text-job-in-progress;
+  }
+
+  .badge-pending-review {
+    @apply bg-job-pending-review/20 text-job-pending-review;
+  }
+
+  .badge-completed {
+    @apply bg-job-completed/20 text-job-completed;
+  }
+
+  .badge-invoiced {
+    @apply bg-job-invoiced/20 text-job-invoiced;
+  }
+
+  .badge-cancelled {
+    @apply bg-job-cancelled/20 text-job-cancelled;
+  }
+
+  .badge-success {
+    @apply bg-status-success/20 text-status-success;
+  }
+
+  .badge-warning {
+    @apply bg-status-warning/20 text-status-warning;
+  }
+
+  .badge-error {
+    @apply bg-status-error/20 text-status-error;
+  }
+
+  .badge-info {
+    @apply bg-status-info/20 text-status-info;
+  }
+}
