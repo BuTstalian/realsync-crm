@@ -334,7 +334,7 @@ interface CertificateItemProps {
     id: string;
     certificate_number: string;
     calibration_date: string;
-    result: string;
+    results: string;
     pdf_url: string | null;
     equipment?: {
       equipment_code: string;
@@ -359,11 +359,11 @@ function CertificateItem({ certificate }: CertificateItemProps) {
         <span
           className={clsx(
             'text-xs px-2 py-1 rounded',
-            certificate.result === 'pass' && 'bg-green-500/20 text-green-400',
-            certificate.result === 'fail' && 'bg-red-500/20 text-red-400'
+            certificate.results === 'pass' && 'bg-green-500/20 text-green-400',
+            certificate.results === 'fail' && 'bg-red-500/20 text-red-400'
           )}
         >
-          {certificate.result === 'pass' ? 'Passed' : 'Failed'}
+          {certificate.results === 'pass' ? 'Passed' : 'Failed'}
         </span>
         {certificate.pdf_url && (
           <a

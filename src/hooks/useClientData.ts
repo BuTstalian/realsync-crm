@@ -27,7 +27,7 @@ interface RecentCertificate {
   id: string;
   certificate_number: string;
   calibration_date: string;
-  result: string;
+  results: string;
   pdf_url: string | null;
   equipment: {
     equipment_code: string;
@@ -188,7 +188,7 @@ export function useClientDashboardData(companyId: string | null) {
         // First get certificates
         const { data: certs, error: certError } = await supabase
           .from('certificates')
-          .select('id, certificate_number, calibration_date, result, pdf_url, equipment_id')
+          .select('id, certificate_number, calibration_date, results, pdf_url, equipment_id')
           .eq('status', 'approved')
           .order('calibration_date', { ascending: false })
           .limit(10);
