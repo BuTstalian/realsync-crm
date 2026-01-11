@@ -196,10 +196,21 @@ export function useClientDashboardData(companyId: string | null) {
       if (!supabase || !companyId) return [];
 
       try {
-        // First get this company's equipment IDs (already filtered by RLS)
+        // First get branch IDs for this company
+        const { data: branches } = await supabase
+          .from('branches')
+          .select('id')
+          .eq('company_id', companyId);
+
+        if (!branches || branches.length === 0) return [];
+
+        const branchIds = branches.map(b => b.id);
+
+        // Get equipment for these branches
         const { data: equipment, error: eqError } = await supabase
           .from('equipment')
           .select('id, equipment_code, description')
+          .in('branch_id', branchIds)
           .eq('is_active', true)
           .limit(100);
 
