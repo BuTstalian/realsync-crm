@@ -124,14 +124,25 @@ export function useClientDashboardData(companyId: string | null) {
         .in('branch_id', branchIds)
         .in('status', ['scheduled', 'in_progress']);
 
-      // Get certificate count (may fail due to RLS, handle gracefully)
+      // Get certificate count (query via equipment IDs to avoid RLS timeout)
       let totalCertificates = 0;
       try {
-        const { count } = await supabase
-          .from('certificates')
-          .select('id', { count: 'exact', head: true })
-          .eq('status', 'approved');
-        totalCertificates = count || 0;
+        // Get equipment IDs first
+        const { data: eqIds } = await supabase
+          .from('equipment')
+          .select('id')
+          .in('branch_id', branchIds)
+          .eq('is_active', true)
+          .limit(100);
+        
+        if (eqIds && eqIds.length > 0) {
+          const { count } = await supabase
+            .from('certificates')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'approved')
+            .in('equipment_id', eqIds.map(e => e.id));
+          totalCertificates = count || 0;
+        }
       } catch (err) {
         console.warn('Could not fetch certificate count:', err);
       }
@@ -178,18 +189,33 @@ export function useClientDashboardData(companyId: string | null) {
     staleTime: 60 * 1000,
   });
 
-  // Fetch recent certificates
+  // Fetch recent certificates - optimized approach
   const certificatesQuery = useQuery({
     queryKey: ['client', 'recent-certificates', companyId],
     queryFn: async (): Promise<RecentCertificate[]> => {
       if (!supabase || !companyId) return [];
 
       try {
-        // First get certificates
+        // First get this company's equipment IDs (already filtered by RLS)
+        const { data: equipment, error: eqError } = await supabase
+          .from('equipment')
+          .select('id, equipment_code, description')
+          .eq('is_active', true)
+          .limit(100);
+
+        if (eqError || !equipment || equipment.length === 0) {
+          return [];
+        }
+
+        const equipmentIds = equipment.map(e => e.id);
+        const equipmentMap = new Map(equipment.map(e => [e.id, e]));
+
+        // Now query certificates only for these specific equipment IDs
         const { data: certs, error: certError } = await supabase
           .from('certificates')
           .select('id, certificate_number, calibration_date, results, pdf_url, equipment_id')
           .eq('status', 'approved')
+          .in('equipment_id', equipmentIds)
           .order('calibration_date', { ascending: false })
           .limit(10);
 
@@ -198,23 +224,7 @@ export function useClientDashboardData(companyId: string | null) {
           return [];
         }
 
-        if (!certs || certs.length === 0) return [];
-
-        // Get equipment details for these certificates
-        const equipmentIds = [...new Set(certs.map(c => c.equipment_id).filter(Boolean))];
-        
-        if (equipmentIds.length === 0) {
-          return certs.map(c => ({ ...c, equipment: null })) as unknown as RecentCertificate[];
-        }
-
-        const { data: equipment } = await supabase
-          .from('equipment')
-          .select('id, equipment_code, description')
-          .in('id', equipmentIds);
-
-        const equipmentMap = new Map(equipment?.map(e => [e.id, e]) || []);
-
-        return certs.map(c => ({
+        return (certs || []).map(c => ({
           ...c,
           equipment: c.equipment_id ? equipmentMap.get(c.equipment_id) || null : null,
         })) as unknown as RecentCertificate[];
